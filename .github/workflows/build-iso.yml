@@ -1,0 +1,51 @@
+name: Build Yazan-OS ISO
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential nasm xorriso genisoimage
+
+      - name: Build Kernel and ISO
+        run: |
+          # تنفيذ أمر البناء الخاص بك (Make)
+          make
+
+          # إنشاء مجلد مؤقت لملفات الإقلاع
+          mkdir -p iso_root/boot/grub
+
+          # نسخ ملف النواة الناتج
+          cp yazan-os.bin iso_root/boot/
+
+          # إنشاء ملف تكوين GRUB مؤقت إذا لم يكن موجوداً
+          cat << 'EOF' > iso_root/boot/grub/grub.cfg
+          set timeout=0
+          set default=0
+
+          menuentry "Yazan-OS" {
+              multiboot /boot/yazan-os.bin
+              boot
+          }
+          EOF
+
+          # بناء ملف ISO النهائي
+          grub-mkrescue -o yazan-os.iso iso_root
+
+      - name: Upload ISO Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: yazan-os-iso
+          path: yazan-os.iso
